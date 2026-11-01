@@ -8,7 +8,7 @@ Instead of relying on scripted attack waves, Fransbot uses strategic objectives,
 
 ## Download
 
-**Current version: Release Candidate 2 (RC2)**
+**Current version: Release Candidate 3 (RC3)**
 
 [Download Fransbot from GitHub Releases](https://github.com/f850484/Fransbot-Releases/releases)
 
@@ -49,6 +49,6 @@ Helpful information includes:
 
 This public repository hosts Fransbot release packages, documentation and feedback.
 
-The development source repository is currently private.
+The development source repository is currently private. Each public release includes a separate matching GPL source archive.
 
 Fransbot is an independent community project and is not an official OpenRA development.
