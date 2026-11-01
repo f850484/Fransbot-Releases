@@ -1,0 +1,61 @@
+name: Publish Fransbot RC3 once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-rc3-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-2025
+    steps:
+      - name: Download and verify approved RC3 assets
+        shell: powershell
+        env:
+          ARTIFACT_URL: "https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-62f0-8211-b459-1a77f288eee9/raw?se=2026-11-01T10%3A43%3A18Z&sp=r&sv=2026-02-06&sr=b&scid=e3d80b00-d8ae-55c9-980b-7cf61ee0e361&skoid=ca37c3ec-ab43-496e-be5f-4684c5519a26&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-31T23%3A12%3A03Z&ske=2026-11-01T23%3A12%3A03Z&sks=b&skv=2026-02-06&sig=Qff%2BIpusidYb4SS6sW8eaeVKT06igq1tlAxiBjlRbss%3D"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $outer = Join-Path $env:RUNNER_TEMP 'rc3-artifact.zip'
+          $assets = Join-Path $env:RUNNER_TEMP 'rc3-assets'
+          Invoke-WebRequest -Uri $env:ARTIFACT_URL -OutFile $outer -UseBasicParsing
+          Expand-Archive -LiteralPath $outer -DestinationPath $assets
+          $player = Join-Path $assets 'Fransbot-RC3-Windows-ReadyToRun.zip'
+          $source = Join-Path $assets 'Fransbot-1.32.0-rc.3-SOURCE.zip'
+          $sums = Join-Path $assets 'SHA256SUMS.txt'
+          if ((Get-FileHash -LiteralPath $player -Algorithm SHA256).Hash -cne 'C08DB8F992E8C8AB4347776BB47913B5EDF5EACAAE78255AA4FF27E499F4FE63') { throw 'Player ZIP hash mismatch.' }
+          if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -cne '96DEB5A3FAC6F3A3782CD6E188DFA0220894FAA095DA1144F4B5BED3506BA311') { throw 'Source ZIP hash mismatch.' }
+          $result = Get-Content -LiteralPath (Join-Path $assets 'PLAYER_RESULT.json') -Raw | ConvertFrom-Json
+          if ($result.Publication -cne 'APPROVED' -or $result.SourceCommit -cne '2909aa9169918bfcf2c8ffdabd953c182ed95ac5' -or $result.SourceDirty -ne $false -or $result.Integrity -cne 'PASS') { throw 'Approved provenance mismatch.' }
+          ('RC3_ASSETS=' + $assets) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Publish RC3 pre-release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $notes = Join-Path $env:RUNNER_TEMP 'RC3_NOTES.md'
+          @'
+          Fransbot: Rearmed Release Candidate 3 is the next public Windows test release for OpenRA Red Alert Playtest 20261026.
+
+          Highlights since RC2:
+          - Major performance and long-match cleanup, including VictoryDrive and routing/allocation work.
+          - Broader Red Alert and Balance Iteration unit/building support.
+          - RECON loss rotation so the same scout type is not repeatedly fed into the same failed objective.
+          - Air, Sea and SpecOps ordinary RAID concurrency capped at four per domain.
+          - Enemy E6 capture uses the normal SpecOps RAID/MissionCard path and can capture enemy FACT independently of Fransbot's own build-capacity ceiling.
+          - Expansion MCV/FACT contacts now establish a passive local foothold using an armed defense or local TENT/BARR.
+          - RAID Opportunity stays under the original MissionCard, uses the same committed actors, and now supports surviving Ground/Tanya forces plus reusable native-capture SpecOps. Consumed engineers and demolition units terminate cleanly.
+          - DTRK/QTNK demolition can engage lightly defended targets while existing RiskModel, abort and blast-safety checks remain authoritative.
+
+          This is a pre-release. The preceding RC3 candidate performed very well in maintainer offline testing; the final Opportunity RAID and demolition-tolerance changes are compile/package validated and are included for broader gameplay feedback.
+
+          Requires official OpenRA Playtest 20261026 and legally obtained Red Alert content.
+          '@ | Set-Content -LiteralPath $notes -Encoding utf8
+          gh release create 'v1.32.0-rc.3' --repo $env:GITHUB_REPOSITORY --target 'fa7c7b874def25a16605defadfd5a71ac8a6eaac' --title 'Fransbot: Rearmed – Release Candidate 3' --notes-file $notes --prerelease `
+            (Join-Path $env:RC3_ASSETS 'Fransbot-RC3-Windows-ReadyToRun.zip') `
+            (Join-Path $env:RC3_ASSETS 'Fransbot-1.32.0-rc.3-SOURCE.zip') `
+            (Join-Path $env:RC3_ASSETS 'SHA256SUMS.txt')
