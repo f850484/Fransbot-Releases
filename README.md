@@ -20,8 +20,6 @@ FransReplay lets you seek through a replay or continue playing from it. You can 
 
 [RC7 release notes, source code and checksums](https://github.com/f850484/Fransbot-Releases/releases/tag/v1.32.0-rc.7)
 
-[Previous release (RC6)](https://github.com/f850484/Fransbot-Releases/releases/tag/v1.32.0-rc.6)
-
 ## Requirements
 
 - Windows x64
